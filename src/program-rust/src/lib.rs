@@ -60,8 +60,7 @@ pub fn process_instruction(
     msg!("&account.data.borrow()  ==> {:?}", &account.data.borrow());
     let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
     msg!("greeting_account ==> {:?}", greeting_account);
-    greeting_account.a = coming_data.a;
-    greeting_account.b = coming_data.b;
+    greeting_account = coming_data;
     greeting_account.res = greeting_account.total();
 
     msg!("greeting_account => {:?}", greeting_account);
