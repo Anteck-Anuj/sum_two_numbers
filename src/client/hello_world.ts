@@ -60,10 +60,14 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'helloworld-keypair.json');
  * The state of a greeting account managed by the hello world program
  */
 class GreetingAccount {
-  counter = 0;
-  constructor(fields: {counter: number} | undefined = undefined) {
+  a = 10;
+  b = 20;
+  res = 0
+  constructor(fields: {a: number, b: number, res: number} | undefined = undefined) {
     if (fields) {
-      this.counter = fields.counter;
+      this.a = fields.a;
+      this.b = fields.b;
+      this.res = fields.res;
     }
   }
 }
@@ -72,16 +76,18 @@ class GreetingAccount {
  * Borsh schema definition for greeting accounts
  */
 const GreetingSchema = new Map([
-  [GreetingAccount, {kind: 'struct', fields: [['counter', 'u32']]}],
+  [GreetingAccount, {kind: 'struct', fields: [['a', 'u32'], ['b', 'u32'], ['res', 'u32']]}],
 ]);
 
 /**
  * The expected size of each greeting account.
  */
-const GREETING_SIZE = borsh.serialize(
+
+const GREETING = borsh.serialize(
   GreetingSchema,
-  new GreetingAccount(),
-).length;
+  new GreetingAccount({a: 25, b: 15, res: 0}),
+)
+const GREETING_SIZE = GREETING.length;
 
 /**
  * Establish a connection to the cluster
@@ -98,19 +104,19 @@ export async function establishConnection(): Promise<void> {
  */
 export async function establishPayer(): Promise<void> {
   let fees = 0;
+
   if (!payer) {
     const {feeCalculator} = await connection.getRecentBlockhash();
-
     // Calculate the cost to fund the greeter account
-    fees += await connection.getMinimumBalanceForRentExemption(GREETING_SIZE);
-
+    fees += await connection.getMinimumBalanceForRentExemption(GREETING_SIZE)
     // Calculate the cost of sending transactions
     fees += feeCalculator.lamportsPerSignature * 100; // wag
-
     payer = await getPayer();
   }
 
+  
   let lamports = await connection.getBalance(payer.publicKey);
+  
   if (lamports < fees) {
     // If current balance is not enough to pay for fees, request an airdrop
     const sig = await connection.requestAirdrop(
@@ -121,6 +127,7 @@ export async function establishPayer(): Promise<void> {
     lamports = await connection.getBalance(payer.publicKey);
   }
 
+  console.log("LAMPORTS_PER_SOL", LAMPORTS_PER_SOL);
   console.log(
     'Using account',
     payer.publicKey.toBase58(),
@@ -138,6 +145,7 @@ export async function checkProgram(): Promise<void> {
   try {
     const programKeypair = await createKeypairFromFile(PROGRAM_KEYPAIR_PATH);
     programId = programKeypair.publicKey;
+    
   } catch (err) {
     const errMsg = (err as Error).message;
     throw new Error(
@@ -147,6 +155,7 @@ export async function checkProgram(): Promise<void> {
 
   // Check if the program has been deployed
   const programInfo = await connection.getAccountInfo(programId);
+  
   if (programInfo === null) {
     if (fs.existsSync(PROGRAM_SO_PATH)) {
       throw new Error(
@@ -161,13 +170,14 @@ export async function checkProgram(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 
   // Derive the address (public key) of a greeting account from the program so that it's easy to find later.
-  const GREETING_SEED = 'hello';
+  const GREETING_SEED = JSON.stringify({
+    a: 25, b: 36, res: 0
+  });
   greetedPubkey = await PublicKey.createWithSeed(
     payer.publicKey,
     GREETING_SEED,
     programId,
   );
-
   // Check if the greeting account has already been created
   const greetedAccount = await connection.getAccountInfo(greetedPubkey);
   if (greetedAccount === null) {
@@ -200,10 +210,12 @@ export async function checkProgram(): Promise<void> {
  */
 export async function sayHello(): Promise<void> {
   console.log('Saying hello to', greetedPubkey.toBase58());
+  
+
   const instruction = new TransactionInstruction({
     keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
     programId,
-    data: Buffer.alloc(0), // All instructions are hellos
+    data: Buffer.from(GREETING), // All instructions are hellos
   });
   await sendAndConfirmTransaction(
     connection,
@@ -217,6 +229,8 @@ export async function sayHello(): Promise<void> {
  */
 export async function reportGreetings(): Promise<void> {
   const accountInfo = await connection.getAccountInfo(greetedPubkey);
+  
+
   if (accountInfo === null) {
     throw 'Error: cannot find the greeted account';
   }
@@ -225,10 +239,11 @@ export async function reportGreetings(): Promise<void> {
     GreetingAccount,
     accountInfo.data,
   );
+
+  console.log("greeting===============", greeting);
   console.log(
     greetedPubkey.toBase58(),
-    'has been greeted',
-    greeting.counter,
-    'time(s)',
+    'sum => ',
+    greeting.res,
   );
 }

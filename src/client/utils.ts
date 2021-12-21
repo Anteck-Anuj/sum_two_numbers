@@ -20,6 +20,7 @@ async function getConfig(): Promise<any> {
     'cli',
     'config.yml',
   );
+
   const configYml = await fs.readFile(CONFIG_FILE_PATH, {encoding: 'utf8'});
   return yaml.parse(configYml);
 }
@@ -47,6 +48,7 @@ export async function getPayer(): Promise<Keypair> {
   try {
     const config = await getConfig();
     if (!config.keypair_path) throw new Error('Missing keypair path');
+
     return await createKeypairFromFile(config.keypair_path);
   } catch (err) {
     console.warn(

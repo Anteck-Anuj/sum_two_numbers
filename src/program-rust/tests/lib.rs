@@ -40,7 +40,7 @@ async fn test_helloworld() {
     assert_eq!(
         GreetingAccount::try_from_slice(&greeted_account.data)
             .unwrap()
-            .counter,
+            .a,
         0
     );
 
@@ -65,7 +65,7 @@ async fn test_helloworld() {
     assert_eq!(
         GreetingAccount::try_from_slice(&greeted_account.data)
             .unwrap()
-            .counter,
+            .a,
         1
     );
 
@@ -90,7 +90,7 @@ async fn test_helloworld() {
     assert_eq!(
         GreetingAccount::try_from_slice(&greeted_account.data)
             .unwrap()
-            .counter,
+            .a,
         2
     );
 }
